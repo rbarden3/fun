@@ -118,6 +118,16 @@ def simple_loop_detector(x=0, y=0):
     return out_y, found
 
 
+def loop_detector(x=0, y=0):
+    """
+    Solve for x: 3x+1 = x*(2^y) ===> x = 1 / ((2^y)-3)
+    Solve for x: 3((3x+1)/(2^a))+1 = x*2^y ===> x = ((2^a)+3) / ((2^(a+y))-9)
+    Solve for x: 3((3((3x+1)/(2^b))+1)/(2^a))+1 = x*2^y ===> x = ((2^(a+b))+(3*2^(b))+9) / ((2^(a+b+y))-27)
+    Solve for x: 3((3((3((3x+1)/(2^c))+1)/(2^b))+1)/(2^a))+1 = x*2^y ===> x = ((2^(a+b+c))+(3*2^(b+c))+(9*2^(c))+27) / ((2^(a+b+c+y))-81)
+    """
+    pass
+
+
 # print(g(1))
 # x = [i for i in range(1, 101)]
 # y = [g(i) for i in x]
