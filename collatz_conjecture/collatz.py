@@ -86,8 +86,15 @@ def g(y):
     return x
 
 
-def test_g(x=0, y=0):
+def simple_loop_detector(x=0, y=0):
     """
+    Simple test for loop in colatz.
+    Only solves for instances where 3x + 1 == x times some power of 2.
+    For Example:
+        for x = 0, y = 2, the result is 1.
+        eqn: 3(1)+1 = 4 = (1)*2^2
+        path: 1 -> 4 -> 2 -> 1
+
     Solve for x: 3x+1 = x*(2^y) ===> x = 1 / ((2^y) -3)
     Solve for x: 3((3x+1)/2)+1 = x*(2^y) ===> x = 5 / ((2^(y+1)) - 9)
     Solve for x: 3((3((3x+1)/2)+1)/2)+1 = x*(2^y) ===> x = 19 / ((2^(y+2)) - 27)
@@ -121,7 +128,7 @@ def test_g(x=0, y=0):
 print("Starting Search:")
 y = 0
 for x in range(100):
-    y, found = test_g(x, y)
+    y, found = simple_loop_detector(x, y)
     if found:
         print()
 
