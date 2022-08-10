@@ -86,7 +86,7 @@ def g(y):
     return x
 
 
-def test_g(x=0):
+def test_g(x=0, y=0):
     """
     Solve for x: 3x+1 = x*(2^y) ===> x = 1 / ((2^y) -3)
     Solve for x: 3((3x+1)/2)+1 = x*(2^y) ===> x = 5 / ((2^(y+1)) - 9)
@@ -95,19 +95,20 @@ def test_g(x=0):
     # assert x >= 0
     a = g(x)
     c = 3 ** (x + 1)
-    y = 0
     b = 2 ** (y + x)
+    out_y = y
     found = False
     while (b - c) <= a:
         if b > c:
             num = g(x) / ((2 ** (y + x)) - (3 ** (x + 1)))
-            if num == int(num):
+            if num == int(num) or True:
                 print(f"X: {x} Y: {y}")
                 print(f"{g(x)} / ({b} - {c}) = {num}")
+                out_y = y
                 found = True
         y += 1
         b = 2 ** (y + x)
-    return found
+    return out_y, found
 
 
 # print(g(1))
@@ -118,8 +119,9 @@ def test_g(x=0):
 # print(list(zip(x, y)))
 
 print("Starting Search:")
-for x in range(10**1):
-    found = test_g(x)
+y = 0
+for x in range(100):
+    y, found = test_g(x, y)
     if found:
         print()
 
