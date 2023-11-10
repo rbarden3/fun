@@ -1,3 +1,8 @@
+from functools import partial
+from tqdm import tqdm as std_tqdm
+
+tqdm = partial(std_tqdm, dynamic_ncols=True)
+
 a = 9.072 * (10 ** (15))
 # l = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 l = [a]
@@ -11,6 +16,7 @@ end = [1, 2, 4]
 
 # for x in l:
 #     print((3 * (6 ** (x % 2 - 1)) * x) + (x % 2))
+
 
 # for _ in range(2):
 #     print()
@@ -43,6 +49,7 @@ def short_collatz(x):
 # x = base
 # for _ in range(2):
 #     print(x := collatz(x))
+
 
 # print()
 # print(base)
@@ -135,11 +142,61 @@ def loop_detector(x=0, y=0):
 
 # print(list(zip(x, y)))
 
-print("Starting Search:")
-y = 0
-for x in range(100):
-    y, found = simple_loop_detector(x, y)
-    if found:
-        print()
+if False:
+    print("Starting Search:")
+    y = 0
+    for x in range(100):
+        y, found = simple_loop_detector(x, y)
+        if found:
+            print()
 
-print("Search Complete")
+    print("Search Complete")
+
+
+def highest_two(n):
+    # Returns the highest power of 2
+    return n & -n
+
+
+def new_collatz(x: int):
+    return (3 * x + 1) // (highest_two(3 * x + 1))
+
+
+def new_loop_detector(start, stop):
+    if start < 2:
+        start = 1
+    elif start % 2 == 0:
+        start -= 1
+    # failures = set(range(1000))
+    # failures = set()
+    highest = start
+    for x in tqdm(range(start, stop, 2), total=stop - start):
+        # for x in range(start, stop, 2):
+        xes = {x}
+        og = x
+        highest = og
+        y = 0
+        failed = False
+        while True:
+            y = new_collatz(x)
+            # print(og, y)
+            # if y < highest or y in failures or y == 1:
+            if y < highest or y == 1:
+                # failures = failures.union(xes)
+                # failures.add(og)
+                break
+            elif y == x:
+                print(f"X: {x} Y: {y}")
+                break
+            x = y
+            xes.add(x)
+
+
+if True:
+    print("Starting Search:")
+    # new_loop_detector(1, 10**10)
+    new_loop_detector(10**10, 10**11)
+
+    print("Search Complete")
+
+# print(new_collatz(1))

@@ -2,7 +2,13 @@
 
 https://www.desmos.com/calculator/j1nwa1hsk4
 
+# New Graph
+
+https://www.desmos.com/calculator/skdi3crtdo
+
 # Reference
+
+[Highest Power of 2](https://codegolf.stackexchange.com/a/220527)
 
 https://en.wikipedia.org/wiki/Collatz_conjecture
 
