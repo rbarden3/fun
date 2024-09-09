@@ -5,13 +5,16 @@ import numpy as np
 
 # %%
 nodes = {
-    1: set([6]),
-    2: set([3, 6]),
-    3: set([4, 5, 6]),
-    4: set([]),
-    5: set([3, 6, 7]),
-    6: set([]),
-    7: set([8]),
+    "1": set(["6"]),
+    "2": set(["3", "6"]),
+    "3": set(["4", "5", "6"]),
+    "4": set([]),
+    "5": set(["3", "6", "7"]),
+    "6": set([]),
+    "7": set(["8"]),
+}
+subgraphs = {
+    3: {"3.1": set([4, 5]), "3.2": set([6])},
 }
 
 
@@ -31,7 +34,7 @@ nodes = fill_nodes(nodes)
 
 # %%
 def build_grid(nodes):
-    grid = [[0 for _ in range(len(nodes))] for _ in range(len(nodes))]
+    grid = [[None for _ in range(len(nodes))] for _ in range(len(nodes))]
     set_point = len(nodes) // 2
     for ind, node in enumerate(nodes):
         grid[ind][set_point] = node
@@ -94,7 +97,7 @@ def get_best_shift(node, in_grid, nodes, look_ahead=1):
     best = {"move": None, "dist": distances[node], "grid": in_grid}
 
     possible_moves = (
-        (r, c) for r, c in get_surrounding_cells(node, grid) if grid[r][c] == 0
+        (r, c) for r, c in get_surrounding_cells(node, grid) if grid[r][c] == None
     )
 
     for move in possible_moves:
@@ -127,11 +130,11 @@ def shift_node(node, in_grid, position):
     grid = deepcopy(in_grid)
     num_rows = len(grid)
     node_loc = np.asarray(np.where(np.array(grid) == node)).T[0]
-    grid[node_loc[0]][node_loc[1]] = 0
+    grid[node_loc[0]][node_loc[1]] = None
     grid[position[0]][position[1]] = node
-    grid = [row for row in grid if sum(row) > 0]
+    grid = [row for row in grid if any(row)]
     while len(grid) < num_rows:
-        grid.append([0 for _ in range(len(grid[0]))])
+        grid.append([None for _ in range(len(grid[0]))])
     return grid
 
 
@@ -195,7 +198,7 @@ def get_best_swap(node, in_grid, nodes, look_ahead=1):
     node_loc = np.asarray(np.where(np.array(grid) == node)).T[0]
 
     possible_moves = (
-        (r, c) for r, c in get_surrounding_cells(node, grid) if grid[r][c] != 0
+        (r, c) for r, c in get_surrounding_cells(node, grid) if grid[r][c] != None
     )
 
     for move in possible_moves:
@@ -220,6 +223,8 @@ def abs_avg(iterable):
 
 
 # %%
+
+
 def print_grid(grid):
     delim = "-" * len(grid[0]) * 8
     print(delim)
