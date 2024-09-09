@@ -13,8 +13,12 @@ nodes = {
     "6": set([]),
     "7": set(["8"]),
 }
+# I think we can get a good layout by walking down the tree, and then walking back up
+# Walking down the tree, we use the parent graphs as guides to place the subnodes
+# Walking back up the tree, we use the subgraphs to place the parent nodes, and remove the subgraph ranges from being editable
 subgraphs = {
-    3: {"3.1": set([4, 5]), "3.2": set([6])},
+    "4": {"4.1": set(["4.2"]), "4.2": set(["3"])},
+    "5": {"5.1": set(["3", "6", "7"]), "5.2": set([]), "5.3": set(["3"])},
 }
 
 
