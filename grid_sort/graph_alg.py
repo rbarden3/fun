@@ -1,4 +1,5 @@
 # %%
+import math
 from copy import deepcopy
 from itertools import chain
 
@@ -82,9 +83,18 @@ print_grid(build_grid(nodes))
 
 # %%
 def distance(node1, node2):
-    slope = (node1[1] - node2[1]) / (node1[0] - node2[0])
-    dist = np.sqrt((node1[0] - node2[0]) ** 2 + (node1[1] - node2[1]) ** 2)
-    sign = -1 if np.signbit(slope) else 1
+    if node1[0] - node2[0] >= 0:
+        sign_a = 1
+    else:
+        sign_a = -1
+    if node1[1] - node2[1] >= 0:
+        sign_b = 1
+    else:
+        sign_b = -1
+
+    sign = sign_a * sign_b
+
+    dist = math.sqrt((node1[0] - node2[0]) ** 2 + (node1[1] - node2[1]) ** 2)
     return sign * dist
 
 
@@ -92,15 +102,43 @@ def distance(node1, node2):
 def get_distances(nodes, grid):
     distances = {node: [] for node in nodes}
     for node, neighbors in nodes.items():
-        node_loc = np.asarray(np.where(np.array(grid) == node)).T[0]
+        node_loc = find_node(grid, node)
         for neighbor in neighbors:
-            neighbor_loc = np.asarray(np.where(np.array(grid) == neighbor)).T[0]
+            neighbor_loc = find_node(grid, neighbor)
             distances[node].append(float(distance(node_loc, neighbor_loc)))
     return distances
 
 
 # %%
 grid = build_grid(nodes)
+
+
+# %%
+def center_row(row):
+    if any(row):
+        vals = [cell for cell in row if cell]
+        pad = len(row) // 2
+        end = len(row) - len(vals) - pad
+        return [None for _ in range(pad)] + vals + [None for _ in range(end)]
+    return row
+
+
+def find_node(grid, node):
+    for i, row in enumerate(grid):
+        if node in row:
+            return (i, row.index(node))
+
+
+def center_nodes(grid):
+    return [center_row(row) for row in grid]
+
+
+def any_edge_nodes(grid):
+    top = grid[0]
+    bottom = grid[-1]
+    left = (row[0] for row in grid)
+    right = (row[-1] for row in grid)
+    return any(chain(top, bottom, left, right))
 
 
 # %%
@@ -113,18 +151,27 @@ def get_empty_cells(grid):
     )
 
 
+def get_shift_moves(connections, grid):
+    out = set()
+    for node in connections:
+        for move in get_surrounding_cells(node, grid):
+            if grid[move[0]][move[1]] == None:
+                out.add(move)
+    return out
+
+
 def get_node_cells(grid):
-    return (
+    cells = (
         (r, c)
         for r in range(len(grid))
         for c in range(len(grid[0]))
         if grid[r][c] != None
     )
+    return {grid[cell[0]][cell[1]]: cell for cell in cells}
 
 
-def get_surrounding_cells(node, grid):
-    area = 1
-    node_loc = np.asarray(np.where(np.array(grid) == node)).T[0]
+def get_surrounding_cells(node, grid, area=1):
+    node_loc = find_node(grid, node)
     row_above = max(node_loc[0] - area, 0)
     row_below = min(node_loc[0] + area, len(grid) - 1)
     col_left = max(node_loc[1] - area, 0)
@@ -153,7 +200,9 @@ def get_best_shift(node, in_grid, nodes, look_ahead=1):
     distances = get_distances(nodes, grid)
     best = {"move": None, "dist": distances[node], "grid": in_grid}
 
-    possible_moves = get_empty_cells(grid)
+    # possible_moves = get_empty_cells(grid)
+    # possible_moves = (cell for cell in get_surrounding_cells(node, grid) if grid[cell[0]][cell[1]] == None)
+    possible_moves = get_shift_moves(nodes[node], grid)
 
     for move in possible_moves:
         move_grid = shift_node(node, grid, move)
@@ -184,7 +233,7 @@ def get_best_shift(node, in_grid, nodes, look_ahead=1):
 # %%
 def shift_node(node, in_grid, position):
     grid = deepcopy(in_grid)
-    node_loc = np.asarray(np.where(np.array(grid) == node)).T[0]
+    node_loc = find_node(grid, node)
     grid[node_loc[0]][node_loc[1]] = None
     grid[position[0]][position[1]] = node
     return grid
@@ -200,10 +249,9 @@ def compare_distances(dist, others):
 
 def find_move(node, in_grid, nodes, look_ahead=1):
     grid = deepcopy(in_grid)
-    grid = pad_grid(trim_grid(grid))
+    # grid = pad_grid(trim_grid(grid))
     distances = get_distances(nodes, grid)
-    node_loc = np.asarray(np.where(np.array(grid) == node)).T[0]
-    node_loc = (int(node_loc[0]), int(node_loc[1]))
+    node_loc = find_node(grid, node)
 
     best_shift = get_best_shift(node, grid, nodes, look_ahead)
     best_swap = get_best_swap(node, grid, nodes, look_ahead)
@@ -240,9 +288,9 @@ def get_best_swap(node, in_grid, nodes, look_ahead=1):
     grid = deepcopy(in_grid)
     distances = get_distances(nodes, grid)
     best = {"move": None, "dist": distances[node], "grid": deepcopy(in_grid)}
-    node_loc = np.asarray(np.where(np.array(grid) == node)).T[0]
+    node_loc = find_node(grid, node)
 
-    possible_moves = get_node_cells(grid)
+    possible_moves = get_node_cells(grid).values()
 
     for move in possible_moves:
         move_grid = swap_nodes(node_loc, move, grid)
