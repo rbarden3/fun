@@ -264,3 +264,55 @@ def trim_grid(grid):
 
 
 # %%
+def optimize_grid(
+    grid, nodes, look_ahead=1, max_iterations=100, max_depth=10, universal=False
+):
+    sorted_grid = [row[:] for row in grid]
+    moves = {}
+    last_moves = []
+    go = True
+    count = 0
+    while go:
+        for node in nodes:
+            moves[node] = find_move(node, sorted_grid, nodes, look_ahead)
+            sorted_grid = moves[node]["grid"]
+            if not moves[node]["move_type"]:
+                print(f"{node}: no move")
+            else:
+                print({k: v for k, v in moves[node].items() if k != "grid"})
+                print_grid(sorted_grid)
+
+        passer = {k: v["move_type"] for k, v in moves.items()}
+        if all(v == "shift" for v in passer.values()):
+            print("No more swaps")
+            go = False
+        elif all(v == "swap" for v in passer.values()):
+            print("No more shifts")
+            go = False
+        elif all(v == None for v in passer.values()):
+            print("No moves made")
+            go = False
+        elif last_moves == list(passer.values()):
+            print("No New moves made")
+            print("Trying Universal")
+            return optimize_grid(sorted_grid, nodes, look_ahead, 2, 2, True)
+            go = False
+            count += 1
+            # look_ahead += 1
+            # print(f"Look ahead increased to {look_ahead}")
+            # if look_ahead > max_depth:
+            #     print("Max depth reached")
+            #     go = False
+        else:
+            count += 1
+            last_moves = list(passer.values())
+        if count > max_iterations:
+            print("Max iterations reached")
+            go = False
+
+    trimmed = trim_grid(sorted_grid)
+    print_grid(trimmed)
+    return trimmed
+
+
+# %%
