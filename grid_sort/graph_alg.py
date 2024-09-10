@@ -22,15 +22,17 @@ subgraphs = {
     "4": {"4.1": set(["4.2"]), "4.2": set(["3"])},
     "5": {"5.1": set(["3", "6", "7"]), "5.2": set([]), "5.3": set(["3"])},
 }
+ext_nodes = {"5": {"3": (-1, 0), "6": (0, 1), "7": (1, 0)}}
 
 
-def fill_nodes(nodes):
+def fill_nodes(nodes, add_missing=True):
     out = {**nodes}
     for node, neighbors in nodes.items():
         for neighbor in neighbors:
-            if neighbor not in out:
+            if neighbor not in out and add_missing:
                 out[neighbor] = set()
-            out[neighbor].add(node)
+            if neighbor in out:
+                out[neighbor].add(node)
 
     return {k: sorted(v) for k, v in sorted(out.items())}
 
@@ -54,10 +56,10 @@ def pad_grid(in_grid, area=1):
 
 # %%
 def build_grid(nodes):
-    grid = [[None for _ in range(len(nodes))] for _ in range(len(nodes))]
+    grid = [[None for _ in range(len(nodes))] for _ in range(len(nodes) + 2)]
     set_point = len(nodes) // 2
     for ind, node in enumerate(nodes):
-        grid[ind][set_point] = node
+        grid[ind + 1][set_point] = node
     return pad_grid(grid)
 
 
@@ -95,11 +97,26 @@ def distance(node1, node2):
 
 
 # %%
-def get_distances(nodes, grid):
+def get_distances(nodes, grid, ext_nodes=None):
     distances = {node: [] for node in nodes}
     for node, neighbors in nodes.items():
         node_loc = find_node(grid, node)
         for neighbor in neighbors:
+            if ext_nodes and neighbor in ext_nodes:
+                x, y = ext_nodes[neighbor]
+                if x == 0:
+                    x = len(grid) // 2
+                elif x == 1:
+                    x = len(grid)
+                if y == 0:
+                    y = len(grid[0]) // 2
+                elif y == 1:
+                    y = len(grid[0])
+                neighbor_loc = (x, y)
+
+                distances[node].append(float(distance(node_loc, neighbor_loc)))
+                continue
+
             neighbor_loc = find_node(grid, neighbor)
             distances[node].append(float(distance(node_loc, neighbor_loc)))
     return distances
@@ -150,10 +167,10 @@ def get_empty_cells(grid):
     )
 
 
-def get_shift_moves(connections, grid):
+def get_shift_moves(connections, grid, buffer=1):
     out = set()
     for node in connections:
-        for move in get_surrounding_cells(node, grid):
+        for move in get_surrounding_cells(node, grid, area=buffer):
             if grid[move[0]][move[1]] == None:
                 out.add(move)
     return out
@@ -194,18 +211,24 @@ def get_boundry(grid):
 
 
 # %%
-def get_best_shift(node, in_grid, nodes, look_ahead=1):
+def get_best_shift(node, in_grid, nodes, look_ahead=1, ext_nodes=None):
     grid = deepcopy(in_grid)
-    distances = get_distances(nodes, grid)
+    distances = get_distances(nodes, grid, ext_nodes)
     best = {"move": None, "dist": distances[node], "grid": in_grid}
 
     # possible_moves = get_empty_cells(grid)
     # possible_moves = (cell for cell in get_surrounding_cells(node, grid) if grid[cell[0]][cell[1]] == None)
-    possible_moves = get_shift_moves(nodes[node], grid)
+    buffer = 1
+    if ext_nodes:
+        graph_nodes = [node for node in nodes[node] if node not in ext_nodes]
+        buffer = 2
+    else:
+        graph_nodes = nodes[node]
+    possible_moves = get_shift_moves([*graph_nodes, node], grid, buffer)
 
     for move in possible_moves:
         move_grid = shift_node(node, grid, move)
-        move_dist = get_distances(nodes, move_grid)[node]
+        move_dist = get_distances(nodes, move_grid, ext_nodes)[node]
         test = {
             "look_ahead": look_ahead,
             "node": node,
@@ -217,10 +240,12 @@ def get_best_shift(node, in_grid, nodes, look_ahead=1):
             best["dist"] = move_dist
             best["grid"] = move_grid
         elif look_ahead > 0:
-            for connection in nodes[node]:
-                ahead = find_move(connection, move_grid, nodes, look_ahead - 1)
+            for connection in graph_nodes:
+                ahead = find_move(
+                    connection, move_grid, nodes, look_ahead - 1, ext_nodes
+                )
                 move_grid = ahead["grid"]
-                move_dist = get_distances(nodes, move_grid)[node]
+                move_dist = get_distances(nodes, move_grid, ext_nodes)[node]
                 if abs_sum(move_dist) < abs_sum(best["dist"]):
                     best["move"] = move
                     best["dist"] = move_dist
@@ -246,14 +271,14 @@ def compare_distances(dist, others):
     return True
 
 
-def find_move(node, in_grid, nodes, look_ahead=1):
+def find_move(node, in_grid, nodes, look_ahead=1, ext_nodes=None):
     grid = deepcopy(in_grid)
     # grid = pad_grid(trim_grid(grid))
-    distances = get_distances(nodes, grid)
+    distances = get_distances(nodes, grid, ext_nodes)
     node_loc = find_node(grid, node)
 
-    best_shift = get_best_shift(node, grid, nodes, look_ahead)
-    best_swap = get_best_swap(node, grid, nodes, look_ahead)
+    best_shift = get_best_shift(node, grid, nodes, look_ahead, ext_nodes)
+    best_swap = get_best_swap(node, grid, nodes, look_ahead, ext_nodes)
     moves = {}
     moves["shift"] = abs_sum(best_shift["dist"])
     moves["swap"] = abs_sum(best_swap["dist"])
@@ -271,8 +296,8 @@ def find_move(node, in_grid, nodes, look_ahead=1):
         out["move_type"] = "swap"
         out["grid"] = best_swap["grid"]
 
-    if any_edge_nodes(out["grid"]):
-        out["grid"] = center_nodes(out["grid"])
+    # if any_edge_nodes(out["grid"]):
+    #     out["grid"] = center_nodes(out["grid"])
     return out
 
 
@@ -285,9 +310,9 @@ def swap_nodes(node_pos, neighbor_pos, in_grid):
     return grid
 
 
-def get_best_swap(node, in_grid, nodes, look_ahead=1):
+def get_best_swap(node, in_grid, nodes, look_ahead=1, ext_nodes=None):
     grid = deepcopy(in_grid)
-    distances = get_distances(nodes, grid)
+    distances = get_distances(nodes, grid, ext_nodes)
     best = {"move": None, "dist": distances[node], "grid": deepcopy(in_grid)}
     node_loc = find_node(grid, node)
 
@@ -295,7 +320,7 @@ def get_best_swap(node, in_grid, nodes, look_ahead=1):
 
     for move in possible_moves:
         move_grid = swap_nodes(node_loc, move, grid)
-        move_dist = get_distances(nodes, move_grid)[node]
+        move_dist = get_distances(nodes, move_grid, ext_nodes)[node]
         if abs_sum(move_dist) < abs_sum(best["dist"]):
             best["move"] = move
             best["dist"] = move_dist
@@ -324,7 +349,7 @@ def trim_grid(in_grid):
 
 # %%
 def optimize_grid(
-    grid, nodes, look_ahead=1, max_iterations=100, max_depth=2, universal=False
+    grid, nodes, ext_nodes=None, look_ahead=1, max_iterations=100, max_depth=2
 ):
     sorted_grid = [row[:] for row in grid]
     moves = {}
@@ -333,7 +358,7 @@ def optimize_grid(
     count = 0
     single_connections = (node for node in nodes if len(nodes[node]) == 1)
     for node in single_connections:
-        moves[node] = find_move(node, sorted_grid, nodes, look_ahead)
+        moves[node] = find_move(node, sorted_grid, nodes, look_ahead, ext_nodes)
         sorted_grid = moves[node]["grid"]
         if not moves[node]["move_type"]:
             print(f"{node}: no move")
@@ -342,7 +367,7 @@ def optimize_grid(
             print_grid(sorted_grid)
     while go:
         for node in nodes:
-            moves[node] = find_move(node, sorted_grid, nodes, look_ahead)
+            moves[node] = find_move(node, sorted_grid, nodes, look_ahead, ext_nodes)
             sorted_grid = moves[node]["grid"]
             if not moves[node]["move_type"]:
                 print(f"{node}: no move")
@@ -362,8 +387,6 @@ def optimize_grid(
             go = False
         elif last_moves == list(passer.values()):
             print("No New moves made")
-            print("Trying Universal")
-            # return optimize_grid(sorted_grid, nodes, look_ahead, 2, 2, True)
             go = False
             count += 1
             look_ahead += 1
