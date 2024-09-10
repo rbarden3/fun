@@ -111,12 +111,11 @@ grid = build_grid(nodes)
 
 # %%
 def center_row(row):
-    if any(row):
-        vals = [cell for cell in row if cell]
-        pad = len(row) // 2
-        end = len(row) - len(vals) - pad
-        return [None for _ in range(pad)] + vals + [None for _ in range(end)]
-    return row
+    vals = [cell for cell in row if cell]
+    empties = len(row) - len(vals)
+    pad = empties // 2
+    end = empties - pad
+    return [None for _ in range(pad)] + vals + [None for _ in range(end)]
 
 
 def find_node(grid, node):
@@ -126,7 +125,11 @@ def find_node(grid, node):
 
 
 def center_nodes(grid):
-    return [center_row(row) for row in grid]
+    vals = [center_row(row) for row in grid if any(row)]
+    empties = len(grid) - len(vals)
+    pad = empties // 2
+    end = empties - pad
+    return add_row(grid, pad) + vals + add_row(grid, end)
 
 
 def any_edge_nodes(grid):
@@ -268,6 +271,8 @@ def find_move(node, in_grid, nodes, look_ahead=1):
         out["move_type"] = "swap"
         out["grid"] = best_swap["grid"]
 
+    if any_edge_nodes(out["grid"]):
+        out["grid"] = center_nodes(out["grid"])
     return out
 
 
