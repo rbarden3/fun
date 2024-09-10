@@ -166,13 +166,9 @@ def get_best_shift(node, in_grid, nodes, look_ahead=1):
 
 def shift_node(node, in_grid, position):
     grid = deepcopy(in_grid)
-    num_rows = len(grid)
     node_loc = np.asarray(np.where(np.array(grid) == node)).T[0]
     grid[node_loc[0]][node_loc[1]] = None
     grid[position[0]][position[1]] = node
-    grid = [row for row in grid if any(row)]
-    while len(grid) < num_rows:
-        grid.append([None for _ in range(len(grid[0]))])
     return grid
 
 
@@ -198,8 +194,6 @@ def find_move(node, in_grid, nodes, look_ahead=1):
     out = {"node": node, "move_type": None, "from": node_loc, "to": None, "grid": grid}
 
     if min(moves.values()) >= abs_sum(distances[node]):
-        if look_ahead > 0:
-            print(f"{node}: no move")
         return out
 
     if all(moves["shift"] <= v for k, v in moves.items() if k != "shift"):
@@ -265,13 +259,22 @@ def trim_grid(grid):
 
 # %%
 def optimize_grid(
-    grid, nodes, look_ahead=1, max_iterations=100, max_depth=10, universal=False
+    grid, nodes, look_ahead=1, max_iterations=100, max_depth=2, universal=False
 ):
     sorted_grid = [row[:] for row in grid]
     moves = {}
     last_moves = []
     go = True
     count = 0
+    single_connections = (node for node in nodes if len(nodes[node]) == 1)
+    for node in single_connections:
+        moves[node] = find_move(node, sorted_grid, nodes, look_ahead)
+        sorted_grid = moves[node]["grid"]
+        if not moves[node]["move_type"]:
+            print(f"{node}: no move")
+        else:
+            print({k: v for k, v in moves[node].items() if k != "grid"})
+            print_grid(sorted_grid)
     while go:
         for node in nodes:
             moves[node] = find_move(node, sorted_grid, nodes, look_ahead)
@@ -295,14 +298,14 @@ def optimize_grid(
         elif last_moves == list(passer.values()):
             print("No New moves made")
             print("Trying Universal")
-            return optimize_grid(sorted_grid, nodes, look_ahead, 2, 2, True)
+            # return optimize_grid(sorted_grid, nodes, look_ahead, 2, 2, True)
             go = False
             count += 1
-            # look_ahead += 1
-            # print(f"Look ahead increased to {look_ahead}")
-            # if look_ahead > max_depth:
-            #     print("Max depth reached")
-            #     go = False
+            look_ahead += 1
+            print(f"Look ahead increased to {look_ahead}")
+            if look_ahead > max_depth:
+                print("Max depth reached")
+                go = False
         else:
             count += 1
             last_moves = list(passer.values())
