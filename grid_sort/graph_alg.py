@@ -83,18 +83,14 @@ print_grid(build_grid(nodes))
 
 # %%
 def distance(node1, node2):
-    if node1[0] - node2[0] >= 0:
-        sign_a = 1
-    else:
-        sign_a = -1
-    if node1[1] - node2[1] >= 0:
-        sign_b = 1
-    else:
-        sign_b = -1
+    diff_a = node1[0] - node2[0]
+    diff_b = node1[1] - node2[1]
+    sign_a = 1 if diff_a >= 0 else -1
+    sign_b = 1 if diff_b >= 0 else -1
 
     sign = sign_a * sign_b
 
-    dist = math.sqrt((node1[0] - node2[0]) ** 2 + (node1[1] - node2[1]) ** 2)
+    dist = math.sqrt((diff_a**2) + (diff_b**2))
     return sign * dist
 
 
