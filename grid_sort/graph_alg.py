@@ -1,5 +1,6 @@
 # %%
 from copy import deepcopy
+from itertools import chain
 
 import numpy as np
 
@@ -37,12 +38,29 @@ nodes = fill_nodes(nodes)
 
 
 # %%
+def pad_grid(in_grid, area=2):
+    grid = deepcopy(in_grid)
+    grid = [
+        [None for _ in range(area)] + row + [None for _ in range(area)] for row in grid
+    ]
+    vert_adds = [[None for _ in range(len(grid[0]))] for _ in range(area)]
+    grid = vert_adds + grid + vert_adds
+    return grid
+
+
+# %%
 def build_grid(nodes):
     grid = [[None for _ in range(len(nodes))] for _ in range(len(nodes))]
     set_point = len(nodes) // 2
     for ind, node in enumerate(nodes):
         grid[ind][set_point] = node
-    return grid
+    return pad_grid(grid)
+
+
+def print_cell(cell):
+    val = str(cell)
+    pads = 8 - len(val)
+    return f"{val}{' ' * pads}"
 
 
 def print_grid(grid):
@@ -50,7 +68,7 @@ def print_grid(grid):
     print(delim)
     for row in grid:
         for cell in row:
-            print(cell, end="\t")
+            print(print_cell(cell), end="")
         print()
     print(delim)
 
@@ -64,9 +82,6 @@ def distance(node1, node2):
     slope = (node1[1] - node2[1]) / (node1[0] - node2[0])
     dist = np.sqrt((node1[0] - node2[0]) ** 2 + (node1[1] - node2[1]) ** 2)
     sign = -1 if np.signbit(slope) else 1
-    # print(
-    #     f"node1: {node1}, node2: {node2}, distance: {dist}, slope: {slope}, sign: {sign}, {np.signbit(slope)}"
-    # )
     return sign * dist
 
 
@@ -101,6 +116,16 @@ def get_surrounding_cells(node, grid):
             if r == node_loc[0] and c == node_loc[1]:
                 continue
             yield (r, c)
+
+
+def get_boundry(grid):
+    out = [
+        ((0, c) for c in range(len(grid[0]))),
+        ((len(grid) - 1, c) for c in range(len(grid[0]))),
+        ((r, 0) for r in range(len(grid))),
+        ((r, len(grid[0]) - 1) for r in range(len(grid))),
+    ]
+    return set(chain.from_iterable(out))
 
 
 # %%
@@ -181,17 +206,11 @@ def find_move(node, in_grid, nodes, look_ahead=1):
         out["to"] = best_shift["move"]
         out["move_type"] = "shift"
         out["grid"] = best_shift["grid"]
-        if look_ahead > 0:
-            print({k: v for k, v in out.items() if k != "grid"})
     elif all(moves["swap"] <= v for k, v in moves.items() if k != "swap"):
         out["to"] = best_swap["move"]
         out["move_type"] = "swap"
         out["grid"] = best_swap["grid"]
-        if look_ahead > 0:
-            print({k: v for k, v in out.items() if k != "grid"})
 
-    if look_ahead > 0:
-        print_grid(out["grid"])
     return out
 
 
@@ -236,6 +255,12 @@ def abs_avg(iterable):
 
 
 # %%
+def trim_grid(grid):
+    out = [row[:] for row in grid if any(row)]
+    out = [*zip(*out)]
+    out = [row for row in out if any(row)]
+    out = [*zip(*out)]
+    return out
 
 
 # %%
