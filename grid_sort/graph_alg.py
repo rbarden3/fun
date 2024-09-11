@@ -22,7 +22,7 @@ subgraphs = {
     "4": {"4.1": set(["4.2"]), "4.2": set(["3"])},
     "5": {"5.1": set(["3", "6", "7"]), "5.2": set([]), "5.3": set(["3"])},
 }
-ext_nodes = {"5": {"3": (-1, 0), "6": (0, 1), "7": (1, 0)}, "4": {"3": (1, 0)}}
+ext_nodes_dict = {"5": {"3": (-1, 0), "6": (0, 1), "7": (1, 0)}, "4": {"3": (1, 0)}}
 
 
 def fill_nodes(nodes, add_missing=True):
@@ -31,6 +31,9 @@ def fill_nodes(nodes, add_missing=True):
         for neighbor in neighbors:
             if neighbor not in out and add_missing:
                 out[neighbor] = set()
+
+            if neighbor in out and type(out[neighbor]) != set:
+                out[neighbor] = set(out[neighbor])
             if neighbor in out:
                 out[neighbor].add(node)
 
@@ -403,7 +406,199 @@ def optimize_grid(
 
     trimmed = trim_grid(sorted_grid)
     print_grid(trimmed)
-    return trimmed
+    return sorted_grid
+
+
+# %%
+# %%
+# nodes = {
+#     "1": set(["6"]),
+#     "2": set(["3", "6"]),
+#     "3": set(["4", "5", "6"]),
+#     "4": set([]),
+#     "5": set(["3", "6", "7"]),
+#     "6": set([]),
+#     "7": set(["8"]),
+# }
+# # I think we can get a good layout by walking down the tree, and then walking back up
+# # Walking down the tree, we use the parent graphs as guides to place the subnodes
+# # Walking back up the tree, we use the subgraphs to place the parent nodes, and remove the subgraph ranges from being editable
+# subgraphs = {
+#     "4": {"4.1": set(["4.2"]), "4.2": set(["3"])},
+#     "5": {"5.1": set(["3", "6", "7"]), "5.2": set([]), "5.3": set(["3"])},
+# }
+# ext_nodes = {"5": {"3": (-1, 0), "6": (0, 1), "7": (1, 0)}, "4": {"3": (1, 0)}}
+
+
+# %%
+def get_rel_pos(origin_node, other_node, grid):
+    origin_loc = find_node(grid, origin_node)
+    other_loc = find_node(grid, other_node)
+    r = other_loc[0] - origin_loc[0]
+    c = other_loc[1] - origin_loc[1]
+
+    r = 0 if r == 0 else r // abs(r)
+    c = 0 if c == 0 else c // abs(c)
+    return (r, c)
+
+
+# %%
+def count_empty_slices(grid):
+    counts = {"t": 0, "b": 0, "l": 0, "r": 0}
+    for row in grid:
+        if all(cell == None for cell in row):
+            counts["t"] += 1
+        else:
+            break
+    for row in reversed(grid):
+        if all(cell == None for cell in row):
+            counts["b"] += 1
+        else:
+            break
+    for col in range(len(grid[0])):
+        if all(row[col] == None for row in grid):
+            counts["l"] += 1
+        else:
+            break
+    for col in reversed(range(len(grid[0]))):
+        if all(row[col] == None for row in grid):
+            counts["r"] += 1
+        else:
+            break
+    return counts
+
+
+# %%
+def row_add_count(grid, trimmed, r_mid, c_mid, r_start, c_start):
+
+    row_finder = list(reversed(range(r_mid)))
+    add_top = len(row_finder)
+    for r in row_finder:
+        if any(grid[r_start + r][c] for c in range(c_start, c_start + len(trimmed[0]))):
+            break
+        add_top -= 1
+
+    row_finder = list(range(r_mid + 1, len(trimmed)))
+    add_bottom = len(row_finder)
+    for r in row_finder:
+        if any(grid[r_start + r][c] for c in range(c_start, c_start + len(trimmed[0]))):
+            break
+        add_bottom -= 1
+
+    row_finder = list(reversed(range(c_mid)))
+    add_left = len(row_finder)
+    for c in row_finder:
+        if any(
+            grid[r][c_start + c]
+            for r in range(r_start + add_top, r_start + len(trimmed) - add_bottom)
+        ):
+            break
+        add_left -= 1
+
+    row_finder = list(range(c_mid + 1, len(trimmed[0])))
+    add_right = len(row_finder)
+    for c in row_finder:
+        if any(
+            grid[r][c_start + c]
+            for r in range(r_start + add_top, r_start + len(trimmed) - add_bottom)
+        ):
+            break
+        add_right -= 1
+
+    return {"t": add_top, "b": add_bottom, "l": add_left, "r": add_right}
+
+
+#  %%
+def insert_rows(in_grid, add_rows, node_loc):
+    grid = deepcopy(in_grid)
+    grid = (
+        grid[: node_loc[0] + 1] + add_row(grid, add_rows["b"]) + grid[node_loc[0] + 1 :]
+    )
+    grid = grid[: node_loc[0]] + add_row(grid, add_rows["t"]) + grid[node_loc[0] :]
+    grid = [
+        row[: node_loc[1] + 1] + [None] * add_rows["r"] + row[node_loc[1] + 1 :]
+        for row in grid
+    ]
+    grid = [
+        row[: node_loc[1]] + [None] * add_rows["l"] + row[node_loc[1] :] for row in grid
+    ]
+    return grid
+
+
+# %%
+def insert_subgrid(in_grid, in_subgrid, node):
+    grid = deepcopy(in_grid)
+    subgrid = deepcopy(in_subgrid)
+    trimmed = trim_grid(subgrid)
+    node_loc = find_node(grid, node)
+    grid[node_loc[0]][node_loc[1]] = None
+
+    empty_slices = count_empty_slices(subgrid)
+    r_mid = len(trimmed) // 2
+    c_mid = len(trimmed[0]) // 2
+    if len(trimmed) % 2 == 0:
+        if empty_slices["t"] > empty_slices["b"]:
+            r_mid -= 1
+
+    if len(trimmed[0]) % 2 == 0:
+        if empty_slices["l"] > empty_slices["r"]:
+            c_mid -= 1
+
+    r_start = node_loc[0] - r_mid
+    c_start = node_loc[1] - c_mid
+
+    add_rows = row_add_count(grid, trimmed, r_mid, c_mid, r_start, c_start)
+    grid = insert_rows(grid, add_rows, node_loc)
+    node_loc = (node_loc[0] + add_rows["t"], node_loc[1] + add_rows["l"])
+    r_start = node_loc[0] - r_mid
+    c_start = node_loc[1] - c_mid
+
+    for r, row in enumerate(trimmed):
+        for c, cell in enumerate(row):
+            grid[r_start + r][c_start + c] = cell
+    return grid
+
+
+# %%
+def run_alg(nodes, subgraphs):
+    nodes = fill_nodes(nodes)
+    grid = build_grid(nodes)
+    grid = optimize_grid(grid, nodes, None)
+    # grid = trim_grid(grid)
+    grid_nodes = set(chain.from_iterable(grid))
+    subgrids = {}
+
+    made_changes = True
+
+    while made_changes:
+        inner_changes = False
+        search_subgraphs = {
+            k: v for k, v in subgraphs.items() if k not in subgrids and k in grid_nodes
+        }
+        for node, subgraph in search_subgraphs.items():
+            print(f"------------------- Subgraph {node}-------------------")
+            ext_node_list = [
+                ext_node
+                for ext_node in chain.from_iterable(subgraph.values())
+                if ext_node in grid_nodes
+            ]
+            ext_nodes = {
+                ext_node: get_rel_pos(node, ext_node, grid)
+                for ext_node in ext_node_list
+            }
+            subnodes = fill_nodes(subgraphs[node], False)
+            subgrid = build_grid(subnodes)
+            subgrids[node] = optimize_grid(subgrid, subnodes, ext_nodes)
+            inner_changes = True
+
+        for k in search_subgraphs:
+            grid = insert_subgrid(grid, subgrids[k], k)
+
+        grid_nodes = set(chain.from_iterable(grid))
+
+        made_changes = inner_changes
+
+    print_grid(trim_grid(grid))
 
 
 # %%
