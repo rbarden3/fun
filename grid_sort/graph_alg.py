@@ -552,11 +552,13 @@ def insert_subgrid(in_grid, in_subgrid, node):
     node_loc = (node_loc[0] + add_rows["t"], node_loc[1] + add_rows["l"])
     r_start = node_loc[0] - r_mid
     c_start = node_loc[1] - c_mid
+    tl_corner = (r_start, c_start)
+    br_corner = (r_start + len(trimmed) - 1, c_start + len(trimmed[0]) - 1)
 
     for r, row in enumerate(trimmed):
         for c, cell in enumerate(row):
             grid[r_start + r][c_start + c] = cell
-    return grid
+    return {"grid": grid, "tl": tl_corner, "br": br_corner}
 
 
 # %%
@@ -567,6 +569,7 @@ def run_alg(nodes, subgraphs):
     # grid = trim_grid(grid)
     grid_nodes = set(chain.from_iterable(grid))
     subgrids = {}
+    subgrid_ranges = {}
 
     made_changes = True
 
@@ -592,13 +595,69 @@ def run_alg(nodes, subgraphs):
             inner_changes = True
 
         for k in search_subgraphs:
-            grid = insert_subgrid(grid, subgrids[k], k)
+            subgrid_data = insert_subgrid(grid, subgrids[k], k)
+            grid = subgrid_data["grid"]
+            subgrid_ranges[k] = {"tl": subgrid_data["tl"], "br": subgrid_data["br"]}
 
         grid_nodes = set(chain.from_iterable(grid))
 
         made_changes = inner_changes
 
-    print_grid(trim_grid(grid))
+    trimmed = trim_grid(grid)
+    print_grid(trimmed)
+    return trimmed
+
+
+# %%
+def get_subgrid_ranges(grid, subgrid):
+    grid_nodes = set(chain.from_iterable(grid))
+    subgrid_points = []
+
+    for k in subgrid:
+        if k in grid_nodes:
+            subgrid_points.append(find_node(grid, k))
+    subgrid_points = sorted(subgrid_points)
+    return {"tl": subgrid_points[0], "br": subgrid_points[-1]}
+
+def generate_layout(grid, subgrids):
+    node_width = 200
+    node_height = 100
+    padding_x = 50
+    padding_y = 50
+    parent_padding = 20
+    subgrid_ranges = {k: get_subgrid_ranges(grid, v) for k, v in subgrids.items()}
+
+    layout = []
+    for k, v in subgrid_ranges.items():
+        tl = v["tl"]
+        br = v["br"]
+        x = (tl[1] * (node_width + padding_x)) - parent_padding
+        y = (tl[0] * (node_height + padding_y)) - parent_padding
+        width = (((br[1] - tl[1] + 1) * node_width) + ((br[1] - tl[1] ) * padding_x)) + (2 * parent_padding)
+        height = (((br[0] - tl[0] + 1) * node_height) + ((br[0] - tl[0]) * padding_y)) + (2 * parent_padding)
+        layout.append(
+            {
+                "id": f"subgrid_{k}",
+                "position": {"x": x, "y": y},
+                "width": width,
+                "height": height,
+            }
+        )
+    for r, row in enumerate(grid):
+        y = r * (node_height + padding_y)
+        for c, cell in enumerate(row):
+            if cell:
+                x = c * (node_width + padding_x)
+                layout.append(
+                    {
+                        "id": cell,
+                        "data": {"label": cell},
+                        "position": {"x": x, "y": y},
+                        "width": node_width,
+                        "height": node_height,
+                    }
+                )
+    return layout
 
 
 # %%
