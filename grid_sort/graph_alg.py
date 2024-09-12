@@ -24,8 +24,10 @@ nodes = {
 # Walking down the tree, we use the parent graphs as guides to place the subnodes
 # Walking back up the tree, we use the subgraphs to place the parent nodes, and remove the subgraph ranges from being editable
 subgraphs = {
+    "5.2": {"5.2.1": set(["5.2.2"]), "5.2.2": set(["5.1"])},
     "4": {"4.1": set(["4.2"]), "4.2": set(["3"])},
-    "5": {"5.1": set(["3", "6", "7"]), "5.2": set([]), "5.3": set(["3"])},
+    "5": {"5.1": set(["3", "6.2", "7"]), "5.2": set([]), "5.3": set(["3"])},
+    "6": {"6.1": set(["6.2"]), "6.2": set(["5.1"])},
 }
 ext_nodes_dict = {"5": {"3": (-1, 0), "6": (0, 1), "7": (1, 0)}, "4": {"3": (1, 0)}}
 
@@ -567,6 +569,27 @@ def insert_subgrid(in_grid, in_subgrid, node):
 
 
 # %%
+def find_referencing_subgrids(in_subgraphs):
+    subgraphs = deepcopy(in_subgraphs)
+    for k in subgraphs:
+        other_subgraphs = {key: val for key, val in subgraphs.items() if key != k}
+        for node, connections in subgraphs[k].items():
+            for connection in connections:
+                for other_key, other_graph in other_subgraphs.items():
+                    # print(other_key, other_graph)
+                    if connection in other_graph:
+                        for other_node, other_connections in other_graph.items():
+                            for other_connection in other_connections:
+                                if other_connection == node:
+                                    subgraphs[k][node].remove(connection)
+                                    subgraphs[k][node].add(other_key)
+                                    break
+
+    return subgraphs
+    # raise Exception("No subgraphs referencing each other")
+
+
+# %%
 def run_alg(nodes, subgraphs):
     nodes = fill_nodes(nodes)
     grid = build_grid(nodes)
@@ -575,6 +598,7 @@ def run_alg(nodes, subgraphs):
     grid_nodes = set(chain.from_iterable(grid))
     subgrids = {}
     subgrid_order = []
+    subgraphs = find_referencing_subgrids(subgraphs)
 
     made_changes = True
 
@@ -630,6 +654,7 @@ def get_subgrid_ranges(grid, subgrid):
     subgrid_points = sorted(subgrid_points)
     return {"tl": subgrid_points[0], "br": subgrid_points[-1]}
 
+
 def expand_subgrid_ranges(subgrid_ranges, subgrids, subgrid_order):
     ranges = deepcopy(subgrid_ranges)
     for k in reversed(subgrid_order):
@@ -647,15 +672,13 @@ def expand_subgrid_ranges(subgrid_ranges, subgrids, subgrid_order):
                     tl_c = tl[1]
                 if ranges[node]["br"][0] > br_r:
                     br_r = br[0]
-                if ranges[node]["br"][1] > br_c:  
+                if ranges[node]["br"][1] > br_c:
                     br_c = br[1]
 
                 ranges[k]["tl"] = (tl_r, tl_c)
                 ranges[k]["br"] = (br_r, br_c)
 
-        
     return ranges
-
 
 
 # %%
@@ -757,4 +780,4 @@ def generate_layout(grid, subgrids, subgrid_order):
 if __name__ == "__main__":
     # example call to get data
     placement = run_alg(nodes, subgraphs)
-    generate_layout(subgrids = subgraphs, **placement)
+    generate_layout(subgrids=subgraphs, **placement)
