@@ -26,8 +26,8 @@ nodes = {
 subgraphs = {
     "5.2": {"5.2.1": set(["5.2.2"]), "5.2.2": set(["5.1"])},
     "4": {"4.1": set(["4.2"]), "4.2": set(["3"])},
-    "5": {"5.1": set(["3", "6.2", "7"]), "5.2": set([]), "5.3": set(["3"])},
-    "6": {"6.1": set(["6.2"]), "6.2": set(["5.1"])},
+    "5": {"5.1": set(["3", "6.1", "7"]), "5.2": set([]), "5.3": set(["3"])},
+    "6": {"6.1": set(["6.2"]), "6.2": set(["5.2"])},
 }
 ext_nodes_dict = {"5": {"3": (-1, 0), "6": (0, 1), "7": (1, 0)}, "4": {"3": (1, 0)}}
 
@@ -571,22 +571,20 @@ def insert_subgrid(in_grid, in_subgrid, node):
 # %%
 def find_referencing_subgrids(in_subgraphs):
     subgraphs = deepcopy(in_subgraphs)
-    for k in subgraphs:
+    for k in subgraphs.keys():
         other_subgraphs = {key: val for key, val in subgraphs.items() if key != k}
         for node, connections in subgraphs[k].items():
             for connection in connections:
                 for other_key, other_graph in other_subgraphs.items():
-                    # print(other_key, other_graph)
                     if connection in other_graph:
                         for other_node, other_connections in other_graph.items():
                             for other_connection in other_connections:
-                                if other_connection == node:
+                                if other_connection in subgraphs[k]:
                                     subgraphs[k][node].remove(connection)
                                     subgraphs[k][node].add(other_key)
                                     break
 
     return subgraphs
-    # raise Exception("No subgraphs referencing each other")
 
 
 # %%
