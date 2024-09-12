@@ -574,7 +574,7 @@ def run_alg(nodes, subgraphs):
     # grid = trim_grid(grid)
     grid_nodes = set(chain.from_iterable(grid))
     subgrids = {}
-    subgrid_ranges = {}
+    subgrid_order = []
 
     made_changes = True
 
@@ -608,7 +608,7 @@ def run_alg(nodes, subgraphs):
         for k in search_subgraphs:
             subgrid_data = insert_subgrid(grid, subgrids[k], k)
             grid = subgrid_data["grid"]
-            subgrid_ranges[k] = {"tl": subgrid_data["tl"], "br": subgrid_data["br"]}
+            subgrid_order.append(k)
 
         grid_nodes = set(chain.from_iterable(grid))
 
@@ -616,7 +616,7 @@ def run_alg(nodes, subgraphs):
 
     trimmed = trim_grid(grid)
     print_grid(trimmed)
-    return trimmed
+    return {"grid": trimmed, "subgrid_order": subgrid_order}
 
 
 # %%
@@ -630,9 +630,36 @@ def get_subgrid_ranges(grid, subgrid):
     subgrid_points = sorted(subgrid_points)
     return {"tl": subgrid_points[0], "br": subgrid_points[-1]}
 
+def expand_subgrid_ranges(subgrid_ranges, subgrids, subgrid_order):
+    ranges = deepcopy(subgrid_ranges)
+    for k in reversed(subgrid_order):
+        for node in subgrids[k].keys():
+            if node in ranges:
+                tl = ranges[node]["tl"]
+                br = ranges[node]["br"]
+                tl_r = ranges[k]["tl"][0]
+                tl_c = ranges[k]["tl"][1]
+                br_r = ranges[k]["br"][0]
+                br_c = ranges[k]["br"][1]
+                if ranges[node]["tl"][0] < tl_r:
+                    tl_r = tl[0]
+                if ranges[node]["tl"][1] < tl_c:
+                    tl_c = tl[1]
+                if ranges[node]["br"][0] > br_r:
+                    br_r = br[0]
+                if ranges[node]["br"][1] > br_c:  
+                    br_c = br[1]
+
+                ranges[k]["tl"] = (tl_r, tl_c)
+                ranges[k]["br"] = (br_r, br_c)
+
+        
+    return ranges
+
+
 
 # %%
-def generate_layout(grid, subgrids):
+def generate_layout(grid, subgrids, subgrid_order):
     node_width = 200
     node_height = 100
     padding_x = 50
@@ -641,6 +668,7 @@ def generate_layout(grid, subgrids):
     start_x = parent_padding
     start_y = parent_padding
     subgrid_ranges = {k: get_subgrid_ranges(grid, v) for k, v in subgrids.items()}
+    subgrid_ranges = expand_subgrid_ranges(subgrid_ranges, subgrids, subgrid_order)
 
     layout = []
 
@@ -728,4 +756,5 @@ def generate_layout(grid, subgrids):
 # %%
 if __name__ == "__main__":
     # example call to get data
-    generate_layout(run_alg(nodes, subgraphs), subgraphs)
+    placement = run_alg(nodes, subgraphs)
+    generate_layout(subgrids = subgraphs, **placement)
