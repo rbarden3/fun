@@ -619,6 +619,7 @@ def get_subgrid_ranges(grid, subgrid):
     subgrid_points = sorted(subgrid_points)
     return {"tl": subgrid_points[0], "br": subgrid_points[-1]}
 
+
 def generate_layout(grid, subgrids):
     node_width = 200
     node_height = 100
@@ -628,13 +629,27 @@ def generate_layout(grid, subgrids):
     subgrid_ranges = {k: get_subgrid_ranges(grid, v) for k, v in subgrids.items()}
 
     layout = []
+    subgrid_x_points = sorted(
+        {p[1] for v in subgrid_ranges.values() for p in v.values()}
+    )
+    subgrid_y_points = sorted(
+        {p[0] for v in subgrid_ranges.values() for p in v.values()}
+    )
     for k, v in subgrid_ranges.items():
         tl = v["tl"]
         br = v["br"]
+        previous_x_subgrids = len([x for x in subgrid_x_points if x < tl[1]])
+        previous_y_subgrids = len([y for y in subgrid_y_points if y < tl[0]])
         x = (tl[1] * (node_width + padding_x)) - parent_padding
+        x += previous_x_subgrids * parent_padding
         y = (tl[0] * (node_height + padding_y)) - parent_padding
-        width = (((br[1] - tl[1] + 1) * node_width) + ((br[1] - tl[1] ) * padding_x)) + (2 * parent_padding)
-        height = (((br[0] - tl[0] + 1) * node_height) + ((br[0] - tl[0]) * padding_y)) + (2 * parent_padding)
+        y += previous_y_subgrids * parent_padding
+        width = (((br[1] - tl[1] + 1) * node_width) + ((br[1] - tl[1]) * padding_x)) + (
+            2 * parent_padding
+        )
+        height = (
+            ((br[0] - tl[0] + 1) * node_height) + ((br[0] - tl[0]) * padding_y)
+        ) + (2 * parent_padding)
         layout.append(
             {
                 "id": f"subgrid_{k}",
@@ -644,10 +659,14 @@ def generate_layout(grid, subgrids):
             }
         )
     for r, row in enumerate(grid):
+        previous_y_subgrids = len([y for y in subgrid_y_points if y < tl[0]])
         y = r * (node_height + padding_y)
+        y += previous_y_subgrids * parent_padding
         for c, cell in enumerate(row):
             if cell:
+                previous_x_subgrids = len([x for x in subgrid_x_points if x < tl[1]])
                 x = c * (node_width + padding_x)
+                x += previous_x_subgrids * parent_padding
                 layout.append(
                     {
                         "id": cell,
