@@ -720,3 +720,6 @@ def generate_layout(grid, subgrids):
 
 
 # %%
+if __name__ == "__main__":
+    # example call to get data
+    generate_layout(run_alg(nodes, subgraphs), subgraphs)
