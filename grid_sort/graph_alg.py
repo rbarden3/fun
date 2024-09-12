@@ -569,7 +569,7 @@ def insert_subgrid(in_grid, in_subgrid, node):
 
 
 # %%
-def find_referencing_subgrids(in_subgraphs):
+def find_circular_subgrids(in_subgraphs):
     subgraphs = deepcopy(in_subgraphs)
     for k in subgraphs.keys():
         other_subgraphs = {key: val for key, val in subgraphs.items() if key != k}
@@ -596,7 +596,7 @@ def run_alg(nodes, subgraphs):
     grid_nodes = set(chain.from_iterable(grid))
     subgrids = {}
     subgrid_order = []
-    subgraphs = find_referencing_subgrids(subgraphs)
+    subgraphs = find_circular_subgrids(subgraphs)
 
     made_changes = True
 
