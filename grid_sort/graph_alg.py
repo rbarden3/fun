@@ -620,6 +620,7 @@ def get_subgrid_ranges(grid, subgrid):
     return {"tl": subgrid_points[0], "br": subgrid_points[-1]}
 
 
+# %%
 def generate_layout(grid, subgrids):
     node_width = 200
     node_height = 100
@@ -631,19 +632,25 @@ def generate_layout(grid, subgrids):
     subgrid_ranges = {k: get_subgrid_ranges(grid, v) for k, v in subgrids.items()}
 
     layout = []
-    subgrid_x_points = sorted(
-        {p[1] for v in subgrid_ranges.values() for p in v.values()}
-    )
-    subgrid_y_points = sorted(
-        {p[0] for v in subgrid_ranges.values() for p in v.values()}
-    )
+
+    subgrid_x_points = set()
+    subgrid_y_points = set()
+
+    for subgrid in subgrid_ranges.values():
+        subgrid_x_points.add(subgrid["tl"][1])
+        subgrid_x_points.add(subgrid["br"][1] + 0.5)
+        subgrid_y_points.add(subgrid["tl"][0])
+        subgrid_y_points.add(subgrid["br"][0] + 0.5)
+
+    subgrid_x_points = sorted(subgrid_x_points)
+    subgrid_y_points = sorted(subgrid_y_points)
     for k, v in subgrid_ranges.items():
         tl = v["tl"]
         br = v["br"]
         previous_x_subgrids = len([x for x in subgrid_x_points if x < tl[1]])
         previous_y_subgrids = len([y for y in subgrid_y_points if y < tl[0]])
-        br_x = len([x for x in subgrid_x_points if x < br[1]])
-        br_y = len([y for y in subgrid_y_points if y < br[0]])
+        br_x = len([x for x in subgrid_x_points if x <= br[1]]) - 1
+        br_y = len([y for y in subgrid_y_points if y <= br[0]]) - 1
 
         x_diff = br_x - previous_x_subgrids
         y_diff = br_y - previous_y_subgrids
@@ -663,6 +670,9 @@ def generate_layout(grid, subgrids):
             ((br[0] - tl[0] + 1) * node_height) + ((br[0] - tl[0]) * padding_y)
         ) + (2 * parent_padding)
         height += y_diff * parent_padding
+        # print(
+        #     f"subgrid: {k}, y_diff: {y_diff}, x_diff: {x_diff}, br_x: {br_x}, previous_x_subgrids: {previous_x_subgrids}, br_y: {br_y}, previous_y_subgrids: {previous_y_subgrids}"
+        # )
         layout.append(
             {
                 "id": f"subgrid_{k}",
@@ -685,6 +695,11 @@ def generate_layout(grid, subgrids):
                 x = 0
                 x += c * (node_width + padding_x)
                 x += previous_x_subgrids * parent_padding
+                # if cell in ["3", "7", "5.3", "5.2"]:
+                #     print(
+                #         f"cell: {cell}, r: {r}, c: {c}, previous_x_subgrids: {previous_x_subgrids}, x: {x}, previous_y_subgrids: {previous_y_subgrids}, y: {y}"
+                #     )
+                #     print(subgrid_y_points)
                 layout.append(
                     {
                         "id": cell,
