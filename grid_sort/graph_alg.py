@@ -6,6 +6,8 @@ from itertools import chain
 import numpy as np
 
 # %%
+# This node dict isnt done this way, but to prevent issues, all points should be in the dict provided
+# Eg. 8 is missing from the dict below, but it should be there
 nodes = {
     "1": set(["6"]),
     "2": set(["3", "6"]),
@@ -15,6 +17,9 @@ nodes = {
     "6": set([]),
     "7": set(["8"]),
 }
+
+
+# IDK if the below is important anymore, but leaving incase we want to do it later
 # I think we can get a good layout by walking down the tree, and then walking back up
 # Walking down the tree, we use the parent graphs as guides to place the subnodes
 # Walking back up the tree, we use the subgraphs to place the parent nodes, and remove the subgraph ranges from being editable
