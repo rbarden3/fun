@@ -580,9 +580,15 @@ def run_alg(nodes, subgraphs):
 
     while made_changes:
         inner_changes = False
-        search_subgraphs = {
-            k: v for k, v in subgraphs.items() if k not in subgrids and k in grid_nodes
-        }
+        search_subgraphs = {}
+        for k, v in subgraphs.items():
+            if k not in subgrids and k in grid_nodes:
+                if all(
+                    node in grid_nodes or node in v.keys()
+                    for node in chain.from_iterable(v.values())
+                ):
+                    search_subgraphs[k] = v
+
         for node, subgraph in search_subgraphs.items():
             print(f"------------------- Subgraph {node}-------------------")
             ext_node_list = [
