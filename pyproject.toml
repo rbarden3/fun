@@ -16,6 +16,8 @@ black = "^23.11.0"
 tqdm = "^4.66.1"
 numpy = "^2.1.1"
 ipykernel = "^6.29.5"
+requests = "^2.32.3"
+pandas = "^2.2.3"
 
 
 [build-system]
