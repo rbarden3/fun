@@ -14,8 +14,6 @@ load_path = Path(__file__).parent / "load.json"
 
 data = json.load(open(load_path, "r"))
 
-data = [x["result"] for x in data]
-
 df = pd.DataFrame(data)
 
 df.head()
@@ -26,6 +24,7 @@ if DROP_NA_COLS:
 
 if MIN_VALUE_COUNT > 0:
     for col in df.columns:  # Loop through columns
+        # if column is not serializable, dump it to json
         try:
             df[col].unique()
         except:
